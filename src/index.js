@@ -48,6 +48,58 @@ app.post("/login", async (req, res) => {
   res.json({ token });
 });
 
+// Endpoint para carga de datos
+app.post(
+  "/upload",
+  authenticateToken,
+  authorizeAdmin,
+  upload.single("file"),
+  async (req, res) => {
+    const file = req.file.path;
+    const results = [];
+    const errors = [];
+
+    createReadStream(file)
+      .pipe(parse({ columns: true }))
+      .on("data", (data) => {
+        const { name, email, age } = data;
+        const errorDetails = {};
+        if (!name) errorDetails.name = "El campo 'name' no puede estar vacío.";
+        if (!email || !email.match(/^[^@\s]+@[^@\s]+\.[^@\s]+$/))
+          errorDetails.email = "El formato del campo 'email' es inválido.";
+        if (age && (!Number.isInteger(+age) || +age <= 0))
+          errorDetails.age = "El campo 'age' debe ser un número positivo.";
+
+        if (Object.keys(errorDetails).length) {
+          errors.push({ row: results.length + 1, details: errorDetails });
+        } else {
+          results.push(data);
+        }
+      })
+      .on("end", async () => {
+        const successfulRecords = [];
+        for (const record of results) {
+          try {
+            const user = await User.create(record);
+            successfulRecords.push(user);
+          } catch (error) {
+            errors.push({
+              row: results.indexOf(record) + 1,
+              details: error.errors.map((e) => e.message),
+            });
+          }
+        }
+        res.json({
+          ok: true,
+          data: {
+            success: successfulRecords,
+            errors: errors,
+          },
+        });
+      });
+  }
+);
+
 // Sincronizar la base de datos y pre-crear el usuario admin
 sequelize.sync().then(async () => {
   const admin = await User.findOne({ where: { email: "admin@codeable.com" } });
