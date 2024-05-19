@@ -9,17 +9,26 @@ import parse from "csv-parse";
 import User from "./models/user.js";
 
 const app = express();
+const secretKey = "your_secret_key";
 
-app.use(express.json());
+app.use(bodyParser.json());
 
-app.get(
-  "/",
+// Database connection
+const sequelize = new Sequelize(require("./config/config").development);
 
-  (_req, res) => {
-    res.json({ message: "Hello World" });
+// Sincronizar la base de datos y pre-crear el usuario admin
+sequelize.sync().then(async () => {
+  const admin = await User.findOne({ where: { email: "admin@codeable.com" } });
+  if (!admin) {
+    const hashedPassword = await bcrypt.hash("adminpassword", 10);
+    await User.create({
+      name: "Admin",
+      email: "admin@codeable.com",
+      password: hashedPassword,
+      role: "admin",
+    });
   }
-);
-
-app.listen(3000, () => {
-  console.log("Server running on port 3000");
+  app.listen(3000, () => {
+    console.log("Server running on port 3000");
+  });
 });
