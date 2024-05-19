@@ -1,9 +1,16 @@
 import express from "express";
 const app = express();
 
-app.get("/", (_req, res) => {
-  res.send("Hello World!");
-});
+//midleware
+app.use(express.json());
+
+app.get(
+  "/",
+
+  (_req, res) => {
+    res.json({ message: "Hello World" });
+  }
+);
 
 app.listen(3000, () => {
   console.log("Server running on port 3000");
