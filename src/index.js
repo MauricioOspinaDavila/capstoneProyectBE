@@ -34,6 +34,20 @@ const authorizeAdmin = (req, res, next) => {
   next();
 };
 
+// Endpoint para login
+app.post("/login", async (req, res) => {
+  const { email, password } = req.body;
+  const user = await User.findOne({ where: { email } });
+  if (!user)
+    return res.status(400).json({ message: "Email o contraseña incorrectos" });
+  const validPassword = await bcrypt.compare(password, user.password);
+  if (!validPassword)
+    return res.status(400).json({ message: "Email o contraseña incorrectos" });
+
+  const token = jwt.sign({ id: user.id, role: user.role }, secretKey);
+  res.json({ token });
+});
+
 // Sincronizar la base de datos y pre-crear el usuario admin
 sequelize.sync().then(async () => {
   const admin = await User.findOne({ where: { email: "admin@codeable.com" } });
