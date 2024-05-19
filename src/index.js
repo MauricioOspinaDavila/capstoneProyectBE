@@ -16,6 +16,24 @@ app.use(bodyParser.json());
 // Database connection
 const sequelize = new Sequelize(require("./config/config").development);
 
+// Middleware para autenticación
+const authenticateToken = (req, res, next) => {
+  const token =
+    req.headers["authorization"] && req.headers["authorization"].split(" ")[1];
+  if (!token) return res.sendStatus(401);
+  jwt.verify(token, secretKey, (err, user) => {
+    if (err) return res.sendStatus(403);
+    req.user = user;
+    next();
+  });
+};
+
+// Middleware para autorización
+const authorizeAdmin = (req, res, next) => {
+  if (req.user.role !== "admin") return res.sendStatus(403);
+  next();
+};
+
 // Sincronizar la base de datos y pre-crear el usuario admin
 sequelize.sync().then(async () => {
   const admin = await User.findOne({ where: { email: "admin@codeable.com" } });
